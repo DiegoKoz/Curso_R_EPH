@@ -1,0 +1,204 @@
+---
+title: "Clase 4. Datos en Panel - Transiciones de SituaciÃ³n por Hogar."
+author: "Natsumi Shokida, Gudio Weksler y Diego Kozlowski"
+date: "27 de Octubre de 2017"
+output:
+  html_notebook: 
+    toc: true
+    toc_float: true 
+---
+
+# Transiciones de situaciÃ³n. 
+
+En esta clase veremos un ejemplo de trabajo con datos de Panel. El ejercicio consiste en identificar a cada Individuo segÃºn su pertenencia a las categorÃ­as: _Indigente_, _Pobre_ y _No Pobre_, en dos perÃ­odos consecutivos.      
+Es importante aclarar que los resultado no van a ser los mismos que los publicados, porque el calculo oficial se hace en una base semestral, mientras que este cÃ¡lculo es una aproximaciÃ³n, en base trimestral.
+
+ 
+Comenzamos limpiando la memoria y creando los directorios
+
+```{r, warning=FALSE}
+rm(list=ls())
+
+dir <- paste0(dirname(rstudioapi::getActiveDocumentContext()$path),"/")
+bases.dir      <-  paste0(dirname(dir),"/Fuentes/")
+resultados.dir <- paste0(dirname(dir),"/Resultados/")
+```
+
+Para el tipo especial de grÃ¡ficos, utilizamos el paquete _alluvial_
+
+```{r}
+library(alluvial, warn = FALSE)
+library(tidyverse, warn = FALSE)
+library(readxl, warn = FALSE)
+library(questionr, warn = FALSE)
+```
+
+Levantamos las Bases Individuales de 2 trimestres consecutivos.       
+A su vez levantamos fuentes secundarias con informaciÃ³n de la canasta alimentaria y la canasta total, categorÃ­as de Adulto equivalente, y cÃ³digos de regiones y aglomerados.     
+La informaciÃ³n de estas tablas la podemos sacar del [comunicado de pobreza](http://www.indec.gob.ar/uploads/informesdeprensa/eph_pobreza_02_16.pdf).
+
+
+```{r}
+individual.316 <- read.table(paste0(bases.dir, "usu_individual_t316.txt"), sep=";", dec=",", header = TRUE, fill = TRUE)
+individual.416 <- read.table(paste0(bases.dir, "usu_individual_t416.txt"), sep=";", dec=",", header = TRUE, fill = TRUE)
+
+
+Adequi <- read_excel(paste0(bases.dir,"ADEQUI.xls"))
+Adequi
+CBA <- read_excel(paste0(bases.dir,"CANASTAS.xls"),sheet = "CBA")
+CBA
+CBT <- read_excel(paste0(bases.dir,"CANASTAS.xls"),sheet = "CBT")
+CBT
+dic.regiones <- read_excel(paste0(bases.dir,'Regiones.xlsx'))
+dic.regiones
+```
+
+## Canastas Trimestrales por Region
+
+A partir de los datos mensuales de la Canasta BÃ¡sica Alimentaria y Total publicados por INDEC, calculamos un valor trimestral de ambas canastas, para un Adulto Equivalente perteneciente a cada una de las regiones.
+
+```{r}
+CBA$Canasta <- 'CBA'
+CBT$Canasta <- 'CBT'
+Canasta <- bind_rows(CBA,CBT)                            %>% 
+  gather(.,Region, Valor, c(3:(ncol(.)-1) ))             %>%
+  mutate(Trimestre = case_when(Mes %in% c(1:3)   ~1,
+                               Mes %in% c(4:6)   ~2,
+                               Mes %in% c(7:9)   ~3,
+                               Mes %in% c(10:12) ~4),
+         Periodo = paste(AÃ±o, Trimestre, sep='.'))       %>% 
+  group_by(Canasta, Region, Periodo)                     %>% 
+  summarise(Valor = mean(Valor))                         %>% 
+  spread(., Canasta,Valor)                               %>% 
+  left_join(., dic.regiones, by = "Region")              %>% 
+  ungroup()                                              %>% 
+  select(-Region)
+Canasta
+```
+
+Armamos un vector que contiene las variables relevantes para el ejercicio. Para luego seleccionar de la tabla solo las mismas.
+```{r}
+
+var.ind <- c('CODUSU', 'ANO4','TRIMESTRE','NRO_HOGAR','COMPONENTE','REGION',
+             'AGLOMERADO', 'PONDERA', 'CH04', 'CH06', 'ITF', 'PONDIH','P21')
+```
+
+##Calculo de las Unidades de Adulto Equivalente por hogar, en la base Individual
+
+1. Chequeamos la consistencia entre los individuos entre un perÃ­odo y otro. Para ello utilizamos la funciÃ³n __lead__ para observar las caracterÃ­sticas de los individuos en en t+1.          
+2. Incorporamos a cada registro de nuestra base la Unidad de Adulto Equivalente (UAE) correspondiente, matcheando las columnas de Edad (CH06) y gÃ©nero (CH04) mediante la funciÃ³n __left_join__.            
+3. Utilizamos la funciÃ³n __group_by__ para calcular el total de UAE por hogar. NotesÃ© que al usar la funciÃ³n __mutate__ creamos una nueva columna, permitiendo conservar la dimensiÃ³n individual de la base.              
+4. En base a las UAE del hogar al que pertenece cada individuo calculamos el valor de las canastas que delimitan las lineas de pobreza e indigencia correspondientes.  
+5. Realizamos la comparaciÃ³n lÃ³gica entre el Ingreso Total Familiar y las Canastas calculadas para asignar a cada individuo su "situaciÃ³n" mediante la funciÃ³n __case_when__.  
+
+```{r, warning=FALSE}
+Pobreza_Individual <- bind_rows(individual.316        %>% 
+                          select(var.ind),
+                        individual.416                %>% 
+                          select(var.ind))                      %>% 
+  mutate(Periodo = paste(ANO4, TRIMESTRE, sep='.'))             %>% 
+  group_by(CODUSU,NRO_HOGAR,COMPONENTE)                         %>% 
+  mutate(CH06_Diff   = abs(lead(CH06) - CH06)<3,
+         CH04_Diff   = lead(CH04==CH04),
+         Consistencia=  ifelse((CH06_Diff & CH04_Diff)== FALSE,
+                               "inconsistente","consistente"))  %>%  
+  ungroup()                                                     %>% 
+  left_join(., Adequi, by = c("CH04", "CH06"))                  %>%  
+  group_by(CODUSU, NRO_HOGAR, Periodo)                          %>% 
+  mutate(Adequi_hogar = sum(adequi))                            %>%
+  ungroup()                                                     %>% 
+  left_join(., Canasta, by = c("REGION", "Periodo"))            %>% 
+  mutate(CBA = CBA*Adequi_hogar,
+         CBT = CBT*Adequi_hogar,
+         Situacion = case_when(ITF<CBA            ~ 'Indigente',
+                               ITF>=CBA & ITF<CBT ~ 'Pobre',
+                               ITF>=CBT           ~ 'No.Pobre'))  
+
+Pobreza_Individual
+```
+
+## Armado de Paneles
+
+Dada la estructura de rotaciÃ³n de la muestra de la EPH, solo la mitad de los hogares permanece en la muestra en dos trimestres consecutivos. Por ende identificamos a aquellos hogares que entraron en ambas muestras. Para eso, utilizamos las funciÃ³n __lag__ __(lead)__ que sirve para obtener el valor anterior (posterior) de una variable en el Dataframe. Al estar trabajando de manera agrupada por hogar, podemos chequear si existe un valor con determinado CODUSU en el perÃ­odo siguiente o no.       
+
+Una vez identificados los hogares que permanecen en la muestra, con la funciÃ³n __lead__ podemos crear una variable de SituaciÃ³n_t1.
+
+```{r, warning=FALSE}
+Panel_Ind <- Pobreza_Individual %>% 
+  filter(PONDIH>0) %>% 
+#Si no saco estos me queda gente que en alguno de los dos periodos no respondio ingresos y distorsiona todo
+  group_by(CODUSU, NRO_HOGAR, COMPONENTE) %>% 
+  arrange(Periodo) %>% 
+  mutate(Cod.Panel = as.factor(ifelse(!is.na(lead(Periodo)),1,0)),
+         Situacion_t1 = lead(Situacion)) %>% 
+         filter(Cod.Panel == 1,Consistencia=="consistente")
+
+Panel_Ind
+```
+
+##CÃ¡lculo de Tasas de Pobreza e Indigencia - Base completa y Panel
+```{r, warning=FALSE}
+Pobreza_resumen <- Pobreza_Individual %>% 
+  group_by(Periodo) %>% 
+  summarise(Tasa_pobreza    = sum(PONDIH[Situacion %in% c('Pobre', 'Indigente')],na.rm = TRUE)/
+                              sum(PONDIH,na.rm = TRUE),
+            
+            Tasa_indigencia = sum(PONDIH[Situacion == 'Indigente'],na.rm = TRUE)/
+                              sum(PONDIH,na.rm = TRUE)) 
+Pobreza_resumen
+
+Pobreza.panel <- Panel_Ind %>% 
+  group_by(Periodo) %>% 
+  summarise(Tasa_pobreza    = sum(PONDIH[Situacion %in% c('Pobre', 'Indigente')],na.rm = TRUE)/
+                              sum(PONDIH,na.rm = TRUE),
+            
+            Tasa_indigencia = sum(PONDIH[Situacion == 'Indigente'],na.rm = TRUE)/
+                              sum(PONDIH,na.rm = TRUE)) 
+Pobreza.panel
+```
+
+##Grafico de TransiciÃ³n
+Para realizar el grÃ¡fico de transiciÃ³n, utilizaremos el paquete __alluvial__, con la funciÃ³n homÃ³nima.     
+Para ello debemos construir un Dataframe que contenga la cantidad de casos observado para cada posible transiciÃ³n. Utilizamos el Ponderador de Ingresos (PONDIH).        
+Adicionalmente, reescribimos como factores a las variables de SituaciÃ³n, para ordenar su apariciÃ³n en el grÃ¡fico.
+```{r}
+datos.alluvial <- Panel_Ind %>% 
+  group_by(Situacion,Situacion_t1, REGION) %>% 
+  summarise(frecuencia = sum(PONDIH),
+            n_muestral = n()) %>% 
+  left_join(.,dic.regiones, by= "REGION") %>% 
+  arrange(REGION)
+
+datos.alluvial$Situacion <- factor(datos.alluvial$Situacion, levels =
+                                         c("No.Pobre","Pobre","Indigente"))
+datos.alluvial$Situacion_t1 <- factor(datos.alluvial$Situacion_t1, levels =
+                                         c("No.Pobre","Pobre","Indigente"))
+
+datos.alluvial
+```
+##Loop de GrÃ¡ficos 
+
+1. Con la funciÃ³n __pdf__(generamos un archivo ".pdf" en la direcciÃ³n y nombre especificados)   
+2. Realizamos un _loop_ por aglomerado para ir armando los grÃ¡ficos.
+    - Filtramos iterativamente nuestra tabla a graficar segÃºn el aglomerado en curso y creamos un vector con el nombre del mismo.        
+    - Especificamos un vector de colores en funciÃ³n de las posibles transiciones.      
+    - Realizamos el grÃ¡fico con las especificaciones de data, color y tamaÃ±o. 
+3. Con ```dev.off()``` _cerramos el archivo .pdf_
+```{r,warning=FALSE,error=FALSE}
+# pdf(paste(resultados.dir, "Transiciones de SituaciÃ³n - Regiones - t316-t416.pdf", sep = ""), onefile = T)
+for(Reg in unique(datos.alluvial$REGION)){
+  
+  data.Reg <- datos.alluvial %>% filter(REGION == Reg)
+  tmp.nom <- dic.regiones$Region[dic.regiones$REGION==Reg]
+  colores <- ifelse(data.Reg$Situacion==data.Reg$Situacion_t1,"gray90",
+                    ifelse(data.Reg$Situacion_t1=="Indigente","firebrick1",
+                           ifelse(data.Reg$Situacion_t1 == 'Pobre','goldenrod1',
+                                  ifelse(data.Reg$Situacion_t1 == 'No.Pobre','chartreuse2','red'))))
+  
+  transiciones <- alluvial(data.Reg[,c(1:2)], freq=data.Reg$frecuencia, border=NA, 
+                           col = colores, cex=0.75, xw=.15)
+  mtext(paste0('Region: ',tmp.nom), 3, line=3, font=2)
+  paste(Sys.time(),tmp.nom)
+}
+# dev.off()
+```

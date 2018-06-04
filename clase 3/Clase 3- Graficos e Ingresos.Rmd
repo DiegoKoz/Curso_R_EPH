@@ -1,0 +1,524 @@
+---
+title: "Clase 3. GrÃ¡ficos y DistribuciÃ³n del Ingreso"
+author: "Guido Weksler y Diego Kozlowski"
+date: "20 de Octubre 2017"
+output:
+  html_notebook: 
+    toc: true
+    toc_float: true 
+---
+
+Limpiamos la memoria y creamos los directorios de trabajo 
+
+```{r}
+rm(list=ls())
+
+# Funcion para obtener la direccion del Script Obtengo la ubicaciÃ³n del Script en el Disco
+dir <- paste0(dirname(rstudioapi::getActiveDocumentContext()$path),"/")
+# A partir del objeto dir, creo un objeto con la direcciÃ³n de la carpeta que contiene los microdatos y otro con la que contendrÃ¡ los resultados.
+bases.dir      <-  paste0(dirname(dir),"/Fuentes/")
+resultados.dir <- paste0(dirname(dir),"/Resultados/")
+
+```
+
+
+# GrÃ¡ficos BÃ¡sicos en R
+
+Rbase  tiene algunos comandos genÃ©ricos para realizar grÃ¡ficos, que se adaptan al tipo de informaciÃ³n que se le pide graficar, por ejemplo:
+
+- plot()
+- hist()
+
+```{r fig.height=8, fig.width=8}
+# iris es un set de datos clÃ¡sico, que ya viene incorporado en R
+plot(iris)
+```
+```{r}
+data(iris)
+plot(iris$Sepal.Length,type = "p")
+plot(iris$Sepal.Length,type = "l")
+plot(iris$Sepal.Length,type = "b")
+hist(iris$Sepal.Length, col = "lightsalmon1", main = "Histograma")
+```
+
+
+Si queremos grabar los grÃ¡ficos en la carpeta resultados. utilizamos la variable que creamos _resultados.dir_ y la funciÃ³n PNG
+```{r}
+archivo <- paste0(resultados.dir, "grafico1.PNG")
+archivo
+png(archivo)
+plot(iris$Sepal.Length,type = "b")
+dev.off()
+```
+
+La funciÃ³n ```png()``` _abre el dispositivo de imagen_, luego podemos hacer los grÃ¡ficos, y a continuaciÃ³n, con ```dev.off()``` se _cierra el dispositivo_ y se graban los grÃ¡ficos. 
+
+Los grÃ¡ficos del R base son Ãºtiles para escribir de forma rÃ¡pida y obtener alguna informaciÃ³n mientras trabajamos. Muchos paquetes estadÃ­sticos permiten mostrar los resultados de forma grÃ¡fica con el comando plot (por ejemplo, las regresiones lineales ```lm()```).       
+ 
+Sin embargo, existen librerÃ­as mucho mejores para crear grÃ¡ficos de nivel de publicaciÃ³n. La mÃ¡s importante es __ggplot2__, que a su vez tiene extensiones mediante otras librerÃ­as.
+
+
+#[Ggplot2](http://ggplot2.tidyverse.org/reference/)
+
+
+ggplot tiene su sintaxis propia. La idea central es pensar los grÃ¡ficos como una sucesiÃ³n de capas, que se construyen una a la vez.    
+
+- El operador __```+```__ nos permite incorporar nuevas capas al grÃ¡fico.
+
+- El comando ```ggplot()``` nos permite definir los __datos__ y las __variables__ (x,y,color,forma,etc). 
+
+- Las sucesivas capas nos permiten definir:
+    - Uno o mÃ¡s tipos de grÃ¡ficos (de columnas, ```geom_col()```, de lÃ­nea, ```geom_line()```, de puntos,```geom_point()```, boxplot, ```geom_boxplot()```)
+    - TÃ­tulos ```labs()```
+    - Estilo del grÃ¡fico ```theme()```
+    - Escalas de los ejes ```scale_y_continuous```,```scale_x_discrete``` 
+    - DivisiÃ³n en subconjuntos ```facet_wrap()```,```facet_grid()```
+
+ggplot tiene __muchos__ comandos, y no tiene sentido saberlos de memoria, es siempre Ãºtil reutilizar grÃ¡ficos viejos y tener a mano el [machete](https://www.rstudio.com/wp-content/uploads/2016/11/ggplot2-cheatsheet-2.1.pdf).
+
+```{r}
+library(ggplot2)
+ggplot(data = iris, aes(x = Sepal.Length, fill = Species))+
+  geom_histogram(alpha=0.75, binwidth = .5)+
+  facet_wrap(~Species)+
+  labs(title = "Histograma por especie")+
+  theme(legend.position = 'none')
+```
+
+
+
+# DistribuciÃ³n del Ingreso
+
+A continuaciÃ³n replicaremos dos grÃ¡ficos del [Informe TÃ©cnico de distribuciÃ³n del ingreso ingresos](http://www.indec.gob.ar/uploads/informesdeprensa/ingresos_1trim17.pdf).
+
+## GrÃ¡fico 1
+
+
+Cargo las librerÃ­as que voy a necesitar
+
+```{r}
+library(tidyverse) # tiene ggplot, dplyr, tidyr, y otros
+library(ggthemes)  # estilos de grÃ¡ficos
+library(ggrepel)   # etiquetas de texto mÃ¡s prolijas que las de ggplot
+library(scales)    # tiene la funciÃ³n 'percent()'
+
+```
+
+Levanto las bases. Como el grÃ¡fico de Gini tiene trimestres anteriores, necesito los datos de varios trimestres. Para evitar cargar mucha informaciÃ³n demÃ¡s, al mismo tiempo que lo levanto, selecciono las columnas que necesito
+
+```{r}
+
+Individual_t117 <- read.table(paste0(bases.dir,"usu_individual_t117.txt"),
+                              sep=";", dec=",", header = TRUE, fill = TRUE)
+Individual_t216 <- read.table(paste0(bases.dir,"usu_individual_t216.txt"),
+                              sep=";", dec=",", header = TRUE, fill = TRUE) %>% 
+  select(ANO4,TRIMESTRE, IPCF, PONDIH)
+
+Individual_t316 <- read.table(paste0(bases.dir,"usu_individual_t316.txt"),
+                              sep=";", dec=",", header = TRUE, fill = TRUE)%>% 
+  select(ANO4,TRIMESTRE, IPCF, PONDIH)
+
+Individual_t416 <- read.table(paste0(bases.dir,"usu_individual_t416.txt"),
+                              sep=";", dec=",", header = TRUE, fill = TRUE)%>% 
+  select(ANO4,TRIMESTRE, IPCF, PONDIH)
+
+```
+
+Junto todas las bases en una sola tabla y calculo el gini para cada perÃ­odo
+
+```{r fig.height=6, fig.width=6}
+library(reldist) #para la funciÃ³n 'gini'
+
+
+gini <- bind_rows(Individual_t216, 
+                  Individual_t316,
+                  Individual_t416,
+                  Individual_t117) %>%
+  select(ANO4,TRIMESTRE, IPCF, PONDIH) %>% 
+  mutate(periodo = paste(ANO4, TRIMESTRE, sep = "\n")) %>% 
+  group_by(periodo) %>% 
+  summarise(gn = gini(IPCF, weights= PONDIH)) %>% 
+  ungroup()
+
+
+```
+
+Con los gini calculados, podemos graficar
+```{r}
+ggplot(data = gini, aes(x = periodo, y = gn)) + 
+  geom_point()
+
+
+```
+
+Con algunos chiches mÃ¡s
+```{r}
+
+ggplot(gini, aes(x = periodo, y = gn, group = 'gini', label= round(gn,3))) + 
+  labs(x = "Trimestre", y = "Coeficiente de Gini", title = "Coeficiente de Gini", subtitle = "SegÃºn trimestre", caption = "Fuente: EPH")+
+  geom_line( size= 1 )+
+  geom_point(aes(shape = periodo, color = periodo),size= 3)+ #puedo definir aes() en cada tipo de grÃ¡fico
+  geom_text_repel(nudge_x = .2)+
+  theme_minimal()+
+  theme(legend.position = "none")
+
+ggsave(filename = paste0(resultados.dir, "gini.png"))
+```
+
+
+## GrÃ¡fico 2
+
+GrÃ¡fico 2. PoblaciÃ³n total segÃºn escala de ingreso individual por fuente y sexo. 
+           Total aglomerados urbanos. Primer trimestre 2017
+
+_TVI_ : MONTO TOTAL DE INGRESOS NO LABORALES       
+_Totp12+P21_ MONTO DE INGRESO DE LA OCUPACIÃN PRINCIPAL.+ MONTO DE INGRESO DE OTRAS OCUPACIONES.
+
+
+Tengo que calcular el decil de ingreso de P47T (MONTO DE INGRESO TOTAL INDIVIDUAL). Para ello, primero hay que _perturbar la variable_ para que no queden muchas personas con el mismo ingreso exacto.
+
+Luego, calculo la proporciÃ³n del ingreso laboral (expandido por PONDII) y del ingreso no laboral (tambiÃ©n expandido), segÃºn decil y gÃ©nero
+
+```{r fig.height=8, fig.width=8}
+library(statar) # Para la funciÃ³n xtile
+
+  datagraf_2 <-Individual_t117 %>% 
+    select(P47T,T_VI, TOT_P12, P21 , PONDII, CH04) %>% 
+    filter(!is.na(P47T), P47T > 0 ) %>% 
+    mutate(P47T_decil         = P47T+runif(nrow(.),min = -.01,max =.01), # Perturbo la variable
+           DECINDR            = xtile(P47T_decil,n=10,w = PONDII),
+           ingreso_laboral    = as.numeric(TOT_P12 + P21),
+           ingreso_no_laboral = as.numeric(T_VI),
+           ingreso_total      = ingreso_laboral + ingreso_no_laboral,
+           CH04               = case_when(CH04 == 1 ~ "Varon",
+                                          CH04 == 2 ~ "Mujer",
+                                          FALSE     ~ "Otro") ) %>% 
+  group_by(DECINDR, CH04) %>% 
+  summarise('ingreso laboral'    = sum(ingreso_laboral*PONDII)/sum(ingreso_total*PONDII),
+            'ingreso no laboral' = sum(ingreso_no_laboral * PONDII)/sum(ingreso_total*PONDII)) %>% 
+gather(tipo_ingreso, monto,3:4 ) 
+
+datagraf_2
+
+```
+
+```{r}
+ggplot(datagraf_2, aes(CH04, monto, fill = tipo_ingreso, 
+                      label = sprintf("%1.1f%%", 100*monto)))+
+  geom_col(position = "stack", alpha=0.6) + 
+  geom_text(position = position_stack(vjust = 0.5), size=3)+
+  labs(x="",y="Porcentaje")+
+  theme_tufte()+
+  scale_fill_fivethirtyeight()+
+  scale_y_continuous(labels = percent)+
+  theme(legend.position = "bottom",
+        legend.title=element_blank(),
+        axis.text.x = element_text(angle=25))+
+  facet_grid(.~DECINDR)
+
+ggsave(filename = paste0(resultados.dir, "ingreso por decil.png"),scale = 2)
+```
+
+En los grÃ¡ficos utilizamos extensiones de ggplot: 
+
+- ggrepel ```geom_text_repel()``` y ```scale_fill_fivethirtyeight()```
+- ggthemes ```theme_tufte()```
+
+simplemente debemos recordar cargar las librerÃ­as si queremos utilizar esas funciones.
+
+## Otros grÃ¡ficos
+
+Los grÃ¡ficos de barras, lÃ­nea o de torta son fÃ¡cilmente reproducibles en un excel, con informaciÃ³n agregada. Sin embargo, hay cosas que no son replicables en excel:
+
+- GrÃ¡ficos que necesitan la informaciÃ³n a nivel de microdatos. __puntos__,  __boxplots__, __Kernels__, etc.
+- Abrir el mismo grÃ¡fico segÃºn alguna variable discreta: ```facet_wrap()```
+- Parametrizar otras variables, para aumentar la dimensionalidad del grÃ¡ficos.
+    - [__color__](http://www.stat.columbia.edu/~tzheng/files/Rcolor.pdf) ```color = ```
+    - __relleno__```fill = ```
+    - __forma__ ```shape = ```
+    - __tamaÃ±o__ ```size = ```
+    - __transparencia__ ```alpha = ```
+
+Esto permite tener, en el plano, grÃ¡ficos de muchas dimensiones de anÃ¡lisis
+
+Cuando queremos utilizar estos parÃ¡metros para representar una variable, los definimos __dentro del aes()__, ```aes(... color = ingresos)```, cuando queremos simplemente mejorar el diseÃ±o, se asignan por fuera, o dentro de cada tipo de grÃ¡ficos, ```geom_col(color = 'green')```.
+
+### Boxplots
+
+
+Hacemos un procesamiento simple: Sacamos los ingresos iguales a cero y las no respuestas de nivel educativo.    
+
+Las variables sexo( CH04 ) y Nivel educativo estÃ¡n codificadas como nÃºmeros, y el R las entiende como numÃ©ricas.
+
+```{r}
+class(Individual_t117$NIVEL_ED)
+class(Individual_t117$CH04)
+
+```
+
+Es importante que las variables sean del tipo que conceptualmente les corresponde (el nivel educativo es una variable categÃ³rica, no continua), para que el ggplot pueda graficarlo correctamente. 
+
+```{r}
+
+ggdata <- Individual_t117 %>% 
+  filter(P21>0, !is.na(NIVEL_ED)) %>% 
+  mutate(NIVEL_ED = as.factor(NIVEL_ED),
+         CH04     = as.factor(CH04))
+```
+
+
+si queremos hacer un boxplot del ingreso para cada nivel educativo, asignamos esta variable a _x, group y fill_
+```{r}
+
+ggplot(ggdata, aes(x = NIVEL_ED, y = P21, group = NIVEL_ED, fill = NIVEL_ED )) +
+  geom_boxplot()+
+  scale_y_continuous(limits = c(0, 40000))
+```
+
+Si queremos agregar la dimensiÃ³n _sexo_, podemos hacer un ```facet_wrap()```
+
+```{r}
+
+ggplot(ggdata, aes(x= NIVEL_ED, y = P21, group = NIVEL_ED, fill = NIVEL_ED )) +
+  geom_boxplot()+
+  scale_y_continuous(limits = c(0, 40000))+
+  facet_wrap(~ CH04, labeller = "label_both")
+```
+
+En este grÃ¡fico, el foco de atenciÃ³n sigue puesto en las diferencias de nivel educativo, pero _neutralizamos_ el efecto de la variable sexo.     
+
+Si lo que queremos hacer es poner el foco de atenciÃ³n en las diferencias por sexo, _neutralizamos_ el efecto del nivel educativo, facetiando por nivel educativo.
+
+
+```{r}
+ggplot(ggdata, aes(x= CH04, y = P21, group = CH04, fill = CH04 )) +
+  geom_boxplot()+
+  scale_y_continuous(limits = c(0, 40000))+
+  facet_wrap(~ NIVEL_ED, labeller = "label_both")
+
+```
+
+
+### Kernels
+
+Podemos hacer una nueva versiÃ³n del grÃ¡fico 2. Utilizando un procesamiento similar al que hicimos antes.
+
+```{r warning=FALSE}
+
+datagraf <-Individual_t117 %>% 
+  select(REGION,P47T,T_VI, TOT_P12, P21 , PONDII, CH04) %>% 
+  filter(!is.na(P47T), P47T > 0 ) %>% 
+  mutate(REGION             = case_when(REGION == 1    ~ 'GBA',
+                                        REGION == 40   ~ 'NOA',
+                                        REGION == 41   ~ 'NEA',
+                                        REGION == 42   ~ 'Cuyo',
+                                        REGION == 43   ~ 'Peampeana',
+                                        REGION == 44   ~ 'Patagonia',
+                                        FALSE          ~ 'otro'),
+         ingreso_laboral    = as.numeric(TOT_P12 + P21),
+         ingreso_no_laboral = as.numeric(T_VI),
+         CH04               = case_when(CH04 == 1 ~ "Varon",
+                                        CH04 == 2 ~ "Mujer",
+                                        FALSE     ~ "Otro") ) %>% 
+  gather(., key = Tipo_ingreso, Ingreso, c((ncol(.)-1):ncol(.)))
+datagraf  
+```
+
+Con los Kernels, no necesitamos dividir a la poblaciÃ³n en deciles, porque podemos tener una mirada completa de la forma de la distribuciÃ³n.    
+
+Para este grÃ¡fico, quiero eliminar los ingresos = 0
+
+```{r}
+datagraf2 <- datagraf %>% filter( Ingreso !=0)
+  
+  
+ggplot(datagraf2, aes(
+  x = Ingreso,
+  weights = PONDII,
+  group = Tipo_ingreso,
+  fill = Tipo_ingreso)) +
+  geom_density(alpha=0.7,adjust =2)+
+  labs(x="DistribuciÃ³n del ingreso", y="",
+       title=" Total segÃºn tipo de ingreso y gÃ©nero", 
+       caption = "Fuente: Encuesta Permanente de Hogares")+
+  scale_x_continuous(limits = c(0,50000))+
+  theme_tufte()+
+  scale_fill_gdocs()+
+  theme(legend.position = "bottom",
+        plot.title      = element_text(size=12))+
+  facet_wrap(~ CH04, scales = "free")
+
+ggsave(filename = paste0(resultados.dir, "Kernel_1.png"),scale = 2)
+
+```
+
+En este tipo de grÃ¡ficos, importa mucho quÃ© variable se utiliza para _facetear_ y quÃ© variable para agrupar, ya que la construcciÃ³n de la distribuciÃ³n es diferente. 
+
+```{r}
+ggplot(datagraf2, aes(
+  x = Ingreso,
+  weights = PONDII,
+  group = CH04,
+  fill = CH04)) +
+  geom_density(alpha=0.7,adjust =2)+
+  labs(x="DistribuciÃ³n del ingreso", y="",
+       title=" Total segÃºn tipo de ingreso y gÃ©nero", 
+       caption = "Fuente: Encuesta Permanente de Hogares")+
+  scale_x_continuous(limits = c(0,50000))+
+  theme_tufte()+
+  scale_fill_gdocs()+
+  theme(legend.position = "bottom",
+        plot.title      = element_text(size=12))+
+  facet_wrap(~Tipo_ingreso, scales = "free")
+
+ggsave(filename = paste0(resultados.dir, "Kernel_1.png"),scale = 2)
+
+```
+
+
+
+
+El eje y no tiene demasiada interpretabilidad en los Kernel, porque hace a la forma en que se construyen las distribuciones. 
+
+
+__ExtensiÃ³n de ggplot__: librerÃ­a : _ggjoy_
+
+Esta extensiÃ³n aprovecha que el eje y no es importante, y lo utiliza para apilar las distribuciones que se estÃ¡n comparando de forma mÃ¡s prolija. 
+
+Si por ejemplo queremos comparar la distribuciÃ³n del ingreso laboral segÃºn regiÃ³n:
+ 
+```{r}
+library(ggjoy)  
+
+
+datagraf3 <- datagraf2 %>% filter(Tipo_ingreso == "ingreso_laboral")
+
+ggplot(datagraf3, aes(
+           x = Ingreso,
+           y = REGION,
+           weights = PONDII,
+           group = REGION,
+           fill = REGION
+           )) +
+  geom_joy(alpha=0.6, bandwidth = 1500)+
+  labs(x="", y="",
+       title="DistribuciÃ³n del ingreso laboral segÃºn regiÃ³n", 
+       caption = "Fuente: Encuesta Permanente de Hogares")+
+  scale_x_continuous(limits = c(0,35000))+
+  theme_tufte()+
+  scale_fill_gdocs()+
+  theme(legend.position = "none",
+        legend.title = element_blank(),
+        plot.title   = element_text(size = 12))
+
+ggsave(filename = paste0(resultados.dir, "Kernel_2.png"),scale = 2)
+
+```
+
+### Tendencia
+
+
+Para realizar estos grÃ¡ficos, vamos a modificar un poco los datos:
+
+- filtramos los ingresos iguales a 0.
+- eliminamos las no respuestas de nivel educativo y las personas con educaciÃ³n especial.
+- eliminamos las respuestas de tipo de establecimiento = 'otros'.
+- recodificamos las variables para que tengan nombres mÃ¡s sugestivos:
+    - __Nivel educativo__ ademÃ¡s la convertimos a factor, porque queremos explicitarle el orden de los valores con ```levels()```. El "\\n"" es un _caracter especial_ que permite que el string continÃºe en la siguiente lÃ­nea.
+    - Sexo.
+    - Tipo de establecimiento.
+    
+    
+```{r }
+ggdata <- Individual_t117 %>% 
+  filter(P21>0,
+         !is.na(NIVEL_ED),
+         NIVEL_ED!=7, 
+         PP04A !=3) %>% 
+  mutate(NIVEL_ED = factor(case_when(NIVEL_ED == 1  ~ 'Primaria \n Incompleta', # '\n' significa carriage return, o enter
+                                     NIVEL_ED == 2  ~ 'Primaria \n Completa',
+                                     NIVEL_ED == 3  ~ 'Secundaria \nIncompleta',
+                                     NIVEL_ED == 4  ~ 'Secundaria \nCompleta',
+                                     NIVEL_ED == 5  ~ 'Superior \nUniversitaria \nIncompleta',
+                                     NIVEL_ED == 6  ~ 'Superior \nUniversitaria \nCompleta',
+                                     FALSE          ~ 'Otro'),
+                           levels= c('Primaria \n Incompleta',
+                                     'Primaria \n Completa',
+                                     'Secundaria \nIncompleta',
+                                     'Secundaria \nCompleta',
+                                     'Superior \nUniversitaria \nIncompleta',
+                                     'Superior \nUniversitaria \nCompleta')),
+         Sexo     = case_when(CH04 == 1 ~ 'VarÃ³n',
+                              CH04 == 2 ~ 'Mujer'),
+         Establecimiento    = case_when(PP04A == 1 ~ 'Estatal',
+                                        PP04A == 2 ~ 'Privado',
+                                        FALSE      ~ 'Otro'))
+
+ggdata
+```
+
+Para graficar un suavizado de las series, se utiliza la funciÃ³n [```geom_smooth()```](http://ggplot2.tidyverse.org/reference/geom_smooth.html). Con suavizado nos referimos al grÃ¡fico de un modelo realizado sobre los datos, que estima el valor en el punto x,y (para el grupo). Las regresiones lineales son un ejemplo de esto, aunque no el Ãºnico, ni el que viene por default.
+
+```{r fig.height=5, fig.width=8}
+ggplot(ggdata, aes(CH06, P21, colour = Sexo, shape = Sexo, alpha = P21))+
+  geom_smooth() + 
+  labs(
+    x = 'Edad',
+    y = 'ingreso',
+    title = 'Ingreso por ocupaciÃ³n principal',
+    subtitle = 'SegÃºn edad, nivel educativo y sexo') +
+  theme_minimal()+
+  scale_y_continuous(labels = comma)+
+  scale_alpha(guide = FALSE)+
+  facet_grid(.~NIVEL_ED)
+```
+
+
+Si corremos el comando ```geom_smooth()```  por default, nos advierte que esta utilizando el mÃ©todo GAM, de [general additive models](https://m-clark.github.io/docs/GAM.html).      
+
+el __sombreado gris__ que envuelve cada lÃ­nea es el intervalo de confianza de dicho punto (95% por default).
+
+TambiÃ©n podemos utilizar mÃ©todos lineales, agregando el parÃ¡metro ```method = 'lm'```. Haciendo esto, el grÃ¡fico muestra una regresiÃ³n lineal simple. Si queremos otro tipo de regresiÃ³n lineal, le podemos explicitar la fÃ³rmula.    
+En el ejemplo siguiente, utilizamos la formula $y = \beta_0 +\beta_1x +\beta_2 x^2 $.
+
+```{r fig.height=5, fig.width=8}
+
+ggplot(ggdata, aes(CH06, P21, colour = Sexo, weight = PONDIIO)) +
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2)) +
+  labs(x = 'Edad',
+       y = 'ingreso',
+       title = 'Regresion cuadrÃ¡tica del Ingreso por ocupaciÃ³n principal respecto de la Edad',
+       subtitle = 'SegÃºn Nivel educativo y sexo') +
+  theme_minimal()+
+  facet_grid(. ~ NIVEL_ED)
+```
+
+
+Si quisiÃ©ramos, ademÃ¡s de ver la relaciÃ³n entre ingreso, Edad, Sexo y Nivel educativo, incorporar el tipo de establecimiento,pÃºblico o privado. Podemos facetear el grÃ¡fico por dos variables en lugar de una, lo que crea una __matriz de grÃ¡ficos__ segÃºn los cruces.
+
+```{r fig.height=5, fig.width=8}
+ggplot(ggdata, aes(CH06, P21, colour = Establecimiento, weight = PONDIIO)) +
+  geom_smooth(method = "lm") +
+  labs(
+  x = 'Edad',
+  y = 'ingreso',
+  title = 'Tendencia del ingreso por ocupaciÃ³n principal',
+  subtitle = 'SegÃºn edad, nivel educativo, sexo y tipo de establecimiento') +
+  theme_minimal()+
+  facet_grid(Sexo ~ NIVEL_ED)
+
+ggsave(filename = paste0(resultados.dir, "regresion lineal.png"),scale = 2)
+
+```
+
+
+# Ejercicios para practicar
+
+- Graficar la distribuciÃ³n del ingreso por ocupaciÃ³n principal segÃºn categorÃ­a ocupacional, con el tipo de grÃ¡fico Kernel.
+- Incorporar en el grÃ¡fico anterior la condiciÃ³n de precariedad laboral (PP07H).
+- Quedarse sÃ³lo con los asalariados, y graficar la relaciÃ³n entre ingreso por ocupaciÃ³n principal, precariedad laboral y tamaÃ±o del establecimiento.
+- Hacer boxplots del ingreso por ocuapciÃ³n principal, segÃºn sexo y condiciÃ³n de precariedad.
+- Incluir en el grÃ¡fico anteriro la dimensiÃ³n de tamaÃ±o del establecimiento.
+
+
+
