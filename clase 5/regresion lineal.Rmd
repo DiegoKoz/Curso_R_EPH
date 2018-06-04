@@ -1,0 +1,433 @@
+---
+title: "Regresión lineal"
+author: Diego Kozlowski
+date: "3 de noviembre de 2017"
+output: 
+  html_notebook:
+    toc: true
+    toc_float: true 
+
+---
+
+# Regresión lineal en R
+
+Limpiamos la memoria con ```rm()``` y ```gc()```, cargamos los directorios y cargamos las librerías y la base que vamos a utilizar.
+
+```{r, warning=FALSE}
+rm(list=ls())
+gc()
+dir <- paste0(dirname(rstudioapi::getActiveDocumentContext()$path),"/")
+bases.dir      <-  paste0(dirname(dir),"/Fuentes/")
+resultados.dir <- paste0(dirname(dir),"/Resultados/")
+
+library(tidyverse, warn.conflicts = FALSE)
+
+individual.416 <- read.table(paste0(bases.dir, "usu_individual_t416.txt"), sep=";", dec=",", header = TRUE, fill = TRUE)
+```
+
+El objetivo será hacer inferencia respecto del ingreso de la ocupación principal __P21__, para ello selecionamos las columnas con las que trabajaremos: variable dependiente y algunas posibles covariables:
+
+
+Variables a utilizar: 
+
+* P21: MONTO DE INGRESO DE LA OCUPACIÓN PRINCIPAL
+* NIVEL_ED
+* ESTADO
+* CAT_OCUP
+* CH04: Sexo
+* CH06: Edad
+* PP04C99: Tamaño del establecimiento, reducido
+* PP07H: ¿Por ese trabajo tiene descuento jubilatorio?
+
+
+creamos un vector para seleccionar estas varibales, y un vectr que especifique qué variables son categóricas, para convertirlas en factores. __Es necesario convertir las variables categóricas a la clase factor, para que el algorítmo de regresión lineal las reconozca como lo que son__
+
+La función ```lapply()``` aplica la función ```factor()``` a toda la ```base[factores]```
+
+```{r}
+var <- c('P21','NIVEL_ED','ESTADO','CAT_OCUP', 'CH04','CH06','PP04C99','PP07H')
+
+base <- individual.416 %>% 
+  select(var)
+
+factores <- c('NIVEL_ED','ESTADO','CAT_OCUP', 'CH04','PP04C99','PP07H')
+
+base[factores] <- lapply(base[factores], factor)
+
+# Nos quedamos sólo con los valores positivos de la variable explicada
+base <- base %>% filter(P21 >0)
+
+```
+
+### Correlación y test de correlación
+
++ Para calcular un test de correlacón de Pearson utilizamos el comando ```cor()```.
++ Si queremos calcular un test de hipótesis sobre la correlación, o un interavalo de confianza, utilizamos ```cor.test()```
++ Si no se cumplen los supestos de Pearson (Normalidad, independencia, linealidad en la relación), podemos utilizar el test de correlación no paramétrico de Spearman o kendall con el parámetro ```method =```
++ si queremos que el test sea a una cola, lo podemos especificar con el parámetro ```alternative = ```
++ La significativiadd por default es 0.95, pero se puede modificar con el parámetro ```conf.level = ```
+
+```{r}
+cor(base$P21, base$CH06)
+
+
+cor.test(base$P21, base$CH06)
+
+
+cor.test(base$P21, base$CH06,method = "spearman")
+
+```
+
+## Regresión lineal 
+
+con el comando ```lm()``` podemos ajustar el modelo. Algunos parametros importantes de esta función son:
+
++ _formula_: definimos el modelo como _ Y ~ X _.
+      + regresion multiple:  y ~ $X_1 + X_2 + ... X_n$.
+      + regresión polinómica: y ~ ```poly(x = X, degree = k)```
+      + interacción de variables: y ~ $X_1*X_2$. Si sólo queremos el término de interacción: $X_1:X_2$
++ _data_ : especificamos el dataset a utilizar
++ _subset_ : si dividimos la muestra en training y testing, podemos indicar el subconjunto de entrenamiento con un vector que indique sus números de fila
+
+
+
+### Regresión lineal simple
+
+Comenzamos regresando a P21 contra la única variable continua que seleccionamos, la edad.     
+
+El modelo propuesto resulta
+
+$$
+E(P_{21}/ch_{06})= \beta_0 + \beta_1 ch_{06}
+$$
+
+
+```{r}
+modelo.ajustado <- lm(formula = P21 ~ CH06, data = base)
+```
+
+La función ```lm()``` genera un _objeto_ que contiene varias propiedades de la regresión que ajustamos.
+
+con ```summary()``` podemos acceder los principales resultados
+
+```{r}
+summary(modelo.ajustado)
+```
+
+Para revisar los supuestos del modelo, así como la posible presencia de outliers, podemos revisar unos gráficos que se generan vía el comando ```plot()```. 
+
+```{r}
+plot(modelo.ajustado)
+```
+
++ Residuals ~ Fitted values: Aquí buscamos que no exista ningúna estructura en los datos. Si la presentan, según la forma que tome, podría ser un indicador de heterocedasticidad o no linealidad en la relación
++ QQ plot: Muestra si los datos se ajustan al supuesto de normalidad. Si los puntos se ubican sobre la linea puntada, esto indica que tienen una distribución normal. En nuestro caso, podemos ver que se ve que se alejan en el extremo derecho de la distribución.
++ $\sqrt{residuos \space estandarizados}$ ~ Fitted Values: Es similar al primer gráfico, con otra escala.
++ Leverage ~ residuos estandarizados: Nos permite encontrar observaciones influyentes. En particular, aquellas que queden fuera de los márgenes definidos por la distancia de cook deberían ser revisadas.
+
+### Regresión lineal múltiple 
+
+
+$$
+E(P_{21}/X)= \beta_0 + \beta_1 ch_{06} + \beta_2 ch_{06}^2
+$$
+
+```{r}
+modelo.ajustado <- lm(formula = P21 ~ poly(x = CH06,degree = 2) , data = base)
+
+summary(modelo.ajustado)
+```
+
+
+Si queremos elegir el mejor modelo polinomico entre los de la forma
+
+
+$$
+E(P_{21}/X)= \beta_0 + \beta_1 ch_{06} + \beta_2 ch_{06}^2 + ... + \beta_n ch_{06}^n 
+$$
+
+
+podemos hacer uso de los loops, para ajustar varios modelos polinómicos de distinto grado, y luego comparar sus r cuadrados ajustados.
+
+```{r}
+r.ajustado <- c()
+for (i in 1:10) {
+
+  modelo.ajustado <- lm(formula = P21 ~ poly(x = CH06,degree = i) , data = base)
+  r.ajustado[i] <- summary(modelo.ajustado)$adj.r.squared  
+}
+
+plot(r.ajustado, type = "b")
+
+```
+
+
+
+### Regresión lineal con variables categóricas
+
+$$
+E(P_{21}/X)= \beta_0 + \beta_1 ch_{06} + \beta_2 cat.ocup
+$$
+
+CAT_OCUP:
+1 = Patrón
+2 = Cuenta propia
+3 = Obrero o empleado
+
+```{r}
+table(base$CAT_OCUP)
+```
+
+Para utilizar dummies, no es necesario que las creemos, simplemente agregamos la variable categórica, y la función se encarga de crear las variables. 
+
+```{r}
+modelo.ajustado <- lm(formula = P21 ~ CH06 + CAT_OCUP, data = base)
+summary(modelo.ajustado)
+
+```
+
+
+### Best subset selection
+
+Si queremos hacer Best subset selection, podemos utilizar el paquete _leaps_, aunque no es el único. El comando ```regsubsets()``` nos permite hacer selección de modelos exahustiva, así como forward o backward stepwise, entre otros métodos. 
+
+
+```{r}
+library(leaps)
+names(base)
+regsubsets.out <-
+    regsubsets(P21 ~ NIVEL_ED + ESTADO + CAT_OCUP + CH04 + CH06 + PP04C99 + PP07H,
+               data = base,
+               nbest = 1,       # 1 best model for each number of predictors
+               nvmax = NULL,    # NULL for no limit on number of variables
+               force.in = NULL, force.out = NULL,
+               method = "exhaustive")
+summary(regsubsets.out)
+
+
+
+```
+
+
+```{r}
+## Adjusted R2
+plot(regsubsets.out, scale = "adjr2", main = "Adjusted R^2")
+
+```
+
+con ```which.max()``` podemos ubicar el modelo con el mejor ajuste. En nuestro caso elegimos comparar por $R^2$.
+
+
+```{r}
+which.max(summary(regsubsets.out)$adjr2)
+```
+
+Sabiendo que el modelo con 13 covariables es el que mejor ajusta, podemos observar con más detalle el mejor de los modelos con 13 covariables
+
+```{r}
+summary(regsubsets.out)$which[13,]
+
+```
+
+
+Como las dummies de la misma categorica se deben incluir todas, sólo puedo concluir que la variable ESTADO no es significativa para el modelo, pero todas las demás sí. Como se vé, este método no es muy útil si pensamos trabajar con muchas variables categóricas, ya que no podemos indicarle que todas las dummies pertenecientes a una misma covariable deben ser consideradas en conjunto (por lo menos para esta librería).
+
+
+```{r}
+modelo.ajustado <- lm(P21 ~ NIVEL_ED + CAT_OCUP + CH04 + CH06 + PP04C99 + PP07H,
+               data = base)
+summary(modelo.ajustado)
+
+```
+
+
+
+## Ejemplo trivial
+
+Por útlimo, utilizamos un dataset de datos de manual, para hacer algunos ejercicios más. Los datos son tomados de Heinz, Peterson, Johnson, y Kerk {2003}, y se encuentran en la base de datos bdims del paquete openintro.
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(openintro,warn.conflicts = FALSE)
+
+```
+
+
+Primero realizamos un diagrama de dispersión que muestre la relación entre el peso medido en kilogramos (wgt)y la circunferencia de la cadera medida en centímetros (hip.gi), diferenciando por sexo (sex = 1 para los hombres y sex = 0 para las mujeres)
+
+```{r}
+ggplot(bdims, aes(hip.gi, wgt, color = factor(sex))) + geom_point()
+
+```
+
+Primero calculamos el modelo sin diferenciar por sexo
+
+```{r}
+lm.ajustado <- lm(wgt~hip.gi,data = bdims)
+summary(lm.ajustado)
+```
+
+Lo graficamos
+
+```{r}
+plot(bdims$hip.gi,bdims$wgt)
+abline(lm.ajustado, col = "red")
+```
+
+Una alternativa en ggplot (no utilizamos el modelo construido, sino que lo volvemos a generar)
+
+```{r}
+
+ggplot(bdims, aes(hip.gi, wgt)) + 
+  geom_point()+ 
+  geom_smooth(method = "lm")
+
+```
+
+### Prediccion
+
+Para predecir una nueva observación, podemos calular el intervalo de confianza o el intervalo de predicción con el comando ```predict.lm()```     
+Por ejemplo, si elegimos una persona con contorno de cadera mide 100 cm.
+
+
+```{r}
+new <- data.frame(hip.gi = 100)
+#intervalo de confianza
+predict.lm(lm.ajustado,newdata = new,interval="confidence",level = 0.95)
+#intervalo de predicción
+predict.lm(lm.ajustado,newdata = new,interval="prediction",level = 0.95)
+```
+
+#### anova
+
+So queremos los datos de la tabla anova, lo hacemos con el comando ```anova()``` 
+
+```{r}
+anova(lm.ajustado)
+
+```
+
+
+Si queremos calcular el modelo con la interacción por sexo.
+
+```{r}
+lm.ajustado <- lm(wgt ~ hip.gi*sex ,data = bdims)
+summary(lm.ajustado)
+```
+
+Para graficar el resultado, recupero los valores predichos, que estan guardados en el objeto generado por ```lm()```, y se los agrego a la tabla original.
+```{r}
+
+bdims$yhat <- lm.ajustado$fitted.values
+
+ggplot(bdims, aes(group = sex, color = factor(sex))) + 
+  geom_point(aes(hip.gi, wgt))+
+  geom_line(aes(hip.gi, yhat))+
+  theme_minimal()
+
+```
+
+
+La interacción resulta significativa, pero no la dummy. Además, parece que el término de interacción no es realmente necesario, sino más bien que es preferible el supuesto de que ambas poblaciones comparten la misma pendiente, con una diferente ordenada al origen.
+
+Podemos probar qué sucede cuando en lugar de utilizar la interacción, simplemente agregamos la dummy de sexo
+
+
+```{r}
+lm.ajustado <- lm(wgt ~ hip.gi + sex ,data = bdims)
+summary(lm.ajustado)
+
+```
+
+La diferencia en el R cuadrado ajustado es menor, por lo que por simplicidad eligiríamos este modelo.    
+
+Nuevamente, si queremos graficar ambas rectas, podemos recuperar los valores predichos
+
+```{r}
+
+bdims$yhat <- lm.ajustado$fitted.values
+
+ggplot(bdims, aes(group = sex, color = factor(sex))) + 
+  geom_point(aes(hip.gi, wgt))+
+  geom_line(aes(hip.gi, yhat))+
+  theme_minimal()
+
+```
+
+
+
+## Logit
+
+Por útlimo, hacemos un ejercicio simple de una regresión logística, que contrasta el deseo de trabajar más horas respecto a la cantidad de hroas trabajadas.
+
+
+```{r}
+variables <- c('CH04',        # Sexo
+               'PP3E_TOT',    # Horas trabajadas
+               'PP03G')       # La semana pasada, ¿quería trabajar más horas? 1-Si 2-No
+
+# Me quedo con los asalariados que respondieron sobre su ingreso
+
+datos <- individual.416 %>% 
+  select(variables) %>% 
+   filter(!is.na(PP3E_TOT),
+          !is.na(PP03G),
+          !PP3E_TOT %in% c(0,999),
+          PP03G    !=9) %>%
+  mutate(PP03G= case_when(PP03G==1 ~ 1,
+                          PP03G==2 ~ 0),
+         Sexo = case_when(CH04==1 ~'Varon',
+                          CH04==2 ~'Mujer')) %>% 
+  select(-CH04)
+datos
+
+```
+
+```{r}
+model <- glm(PP03G ~.,family=binomial(link='logit'),data=datos)
+summary(model)
+
+```
+
+
+Si queremos graficarlo. Podemos utilizar lo valores estimados del modelo.
+
+```{r}
+datos$yhat <- model$fitted.values
+
+ggplot(datos, aes(group = Sexo, color = factor(Sexo))) + 
+  geom_line(aes(PP3E_TOT, yhat))+
+  geom_jitter(aes(PP3E_TOT,PP03G ),alpha=0.03,width = 0,height = 0.01)+
+  geom_vline(xintercept = 35, linetype= 'dashed')+
+  labs(x = "Total de Horas trabajadas en la semana en la ocupación principal",
+       y ="¿Quería trabajar más horas?",
+       title= "Probabilidad de querer trabajar más horas según género")+
+  theme_minimal()+
+  theme(legend.position = "bottom",
+        text = element_text(size=15))+
+  scale_y_continuous(breaks = c(0,.5,1),labels = c("No","50%","Si"))+
+  scale_x_continuous(limits = c(0,100))
+```
+
+
+Otra opción es calcular dos modelos logit por separado, según sexo. Esto tiene la ventaja de que incluye los intervalos de confianza del modelo, y la desventaja de que no se trata de un mismo modelo con un control por sexo, sino de dos modelos calculados por separado.
+
+
+```{r}
+ ggplot(datos, aes(x=PP3E_TOT, y=PP03G, color= Sexo, group=Sexo))+
+  geom_jitter(alpha=0.03,width = 0,height = 0.01)+ 
+  stat_smooth(method="glm", method.args=list(family="binomial"), se=T)+
+  geom_vline(xintercept = 35, linetype= 'dashed')+
+  labs(x = "Total de Horas trabajadas en la semana en la ocupación principal",
+       y ="¿Quería trabajar más horas?",
+       title= "Probabilidad de querer trabajar más horas según género")+
+  theme_minimal()+
+  theme(legend.position = "bottom",
+        text = element_text(size=15))+
+  scale_y_continuous(breaks = c(0,.5,1),labels = c("No","50%","Si"))+
+  scale_x_continuous(limits = c(0,100))
+
+```
+
+
+

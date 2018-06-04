@@ -1,5 +1,5 @@
 ---
-title: "Clase 5. Pool de Datos en Panel, Matrices de TransiciÃ³n y Regresiones"
+title: "Clase 5. Pool de Datos en Panel, Matrices de Transición y Regresiones"
 author: "Guido Weksler"
 date: "Viernes 3 de Noviembre de 2017"
 output:
@@ -12,9 +12,9 @@ lang: es
 ---
 
 #Datos De Panel 
-##IntroducciÃ³n
-En esta clase veremos como construir un _pool_ de datos de panel utilizando mÃºltiples bases de la EPH. El ejercicio consiste en analizar las transiciones individuales entre las distintas categorÃ­as y estados ocupacionales.
-Trabajaremos con un caso sencillo, sin reclasificar a la poblaciÃ³n en mÃ¡s que las categorÃ­as definidas por la EPH. A su vez, para maximizar la cantidad de casos del ejercicio utilizando las bases recientemente publicadas, trabajaremos con transiciones entre trimestres (Aunque en la prÃ¡ctica suelen realizarse paneles anuales para observar mÃ¡s movilidad)
+##Introducción
+En esta clase veremos como construir un _pool_ de datos de panel utilizando múltiples bases de la EPH. El ejercicio consiste en analizar las transiciones individuales entre las distintas categorías y estados ocupacionales.
+Trabajaremos con un caso sencillo, sin reclasificar a la población en más que las categorías definidas por la EPH. A su vez, para maximizar la cantidad de casos del ejercicio utilizando las bases recientemente publicadas, trabajaremos con transiciones entre trimestres (Aunque en la práctica suelen realizarse paneles anuales para observar más movilidad)
  
 Comenzamos limpiando la memoria y creando los directorios
 
@@ -26,7 +26,7 @@ bases.dir      <-  paste0(dirname(dir),"/Fuentes/")
 resultados.dir <- paste0(dirname(dir),"/Resultados/")
 ```
 
-Cargamos la librerÃ­a _tidyverse_ con la cual trabajaremos para procesar la informaciÃ³n
+Cargamos la librería _tidyverse_ con la cual trabajaremos para procesar la información
 
 ```{r}
 library(tidyverse, warn = FALSE)
@@ -42,14 +42,14 @@ individual.117 <- read.table(paste0(bases.dir, "usu_individual_t117.txt"), sep="
 ```
 
 ## Pasos para la construccion del Panel
-1. Creamos un Vector que contenga unicamente las variables de interÃ©s, para recortar luego la base con la funcion __select__.      
-2. Unimos todas las bases con la funciÃ³n __bind_rows__, seleccionando solo las variables del vector.
-3. Filtramos de la base los casos de no respuesta y acotaremos en este ejercicio el analisis a la poblaciÃ³n entre 18 y 65 aÃ±os.  
-4. Creamos las categorÃ­as de anÃ¡lisis que deseamos observar en distintos perÃ­dos.
+1. Creamos un Vector que contenga unicamente las variables de interés, para recortar luego la base con la funcion __select__.      
+2. Unimos todas las bases con la función __bind_rows__, seleccionando solo las variables del vector.
+3. Filtramos de la base los casos de no respuesta y acotaremos en este ejercicio el analisis a la población entre 18 y 65 años.  
+4. Creamos las categorías de análisis que deseamos observar en distintos perídos.
 5. Armamos un _identificador ordinal_ para los registros de cada trimestre.
-6. Replicamos el dataframe construido y le cambiamos los nombres a todas las variables, a excepciÃ³n de las que usaremos para identificar a un mismo individuo ( _CODUSU_, _NRO_HOGAR_, _COMPONENTE_).
-7. En la base replicada, modificamos el _identificador ordinal_ en funciÃ³n de la amplitud que deseamos en las observaciones de panel. En nuestro caso como uniremos registros con distancia de 1 trimestre, le restamos _1_ a cada valor
-8. Unimos ambas bases con la funcion __inner_join__ que solo nos dejarÃ¡ registros que en ambas bases contengn los mismos _CODUSU_, _NRO_HOGAR_, _COMPONENTE_ e _identificador ordinal_.
+6. Replicamos el dataframe construido y le cambiamos los nombres a todas las variables, a excepción de las que usaremos para identificar a un mismo individuo ( _CODUSU_, _NRO_HOGAR_, _COMPONENTE_).
+7. En la base replicada, modificamos el _identificador ordinal_ en función de la amplitud que deseamos en las observaciones de panel. En nuestro caso como uniremos registros con distancia de 1 trimestre, le restamos _1_ a cada valor
+8. Unimos ambas bases con la funcion __inner_join__ que solo nos dejará registros que en ambas bases contengn los mismos _CODUSU_, _NRO_HOGAR_, _COMPONENTE_ e _identificador ordinal_.
 9. Creamos la columna para las consistencias, y luego filtramos la base para eliminar los registros inconsistentes
 ```{r,warning=FALSE}
 #Paso 1
@@ -98,9 +98,9 @@ Panel_Continua <- Panel_Continua %>%
     filter(Consistencia == "consistente")
 ```
 
-#Matrices de transiciÃ³n
-## Calculo de probabilidades de transiciÃ³n. 
-Realizaremos un breve ejercicio para identificar la magnitud relativa de las transiciones entre las distintas categorÃ­as ocupacionales. Para ello calculamos la suma ponderada de la cantidad de casos observados para cada posible combinaciÃ³n de __Cateogria__ y __Categoria_t1__. Luego calcularemos la probabilidad de encontrarse en categorÃ­a en t1, condicional a haber pertenecido a las distintas categorÃ­as en t0.  
+#Matrices de transición
+## Calculo de probabilidades de transición. 
+Realizaremos un breve ejercicio para identificar la magnitud relativa de las transiciones entre las distintas categorías ocupacionales. Para ello calculamos la suma ponderada de la cantidad de casos observados para cada posible combinación de __Cateogria__ y __Categoria_t1__. Luego calcularemos la probabilidad de encontrarse en categoría en t1, condicional a haber pertenecido a las distintas categorías en t0.  
 
 
 ```{r}
@@ -113,47 +113,47 @@ Categorias_transiciones <- Panel_Continua %>%
   group_by(Categoria) %>% 
   mutate(Prob_salida = frecuencia/sum(frecuencia))
 ```
-Notese que la linea comentada en el medio de la cadena de pipes, nos permitirÃ­a iterar rapidamente sobre el procedimiento anterior agregando un filtro. En este ejemplo, podrÃ­amos recalcular las proporciones Ãºnicamente para aquellas personas que presentan un movimiento de categorÃ­a
+Notese que la linea comentada en el medio de la cadena de pipes, nos permitiría iterar rapidamente sobre el procedimiento anterior agregando un filtro. En este ejemplo, podríamos recalcular las proporciones únicamente para aquellas personas que presentan un movimiento de categoría
 
-##GrÃ¡fico de Matriz de TransiciÃ³n
+##Gráfico de Matriz de Transición
 
 ```{r}
 library(ggthemes)
 ggplot(Categorias_transiciones, aes(x = Categoria_t1, 
                                     y = Categoria, fill = Prob_salida,
                                     label =round(Prob_salida*100,2))) +
-  labs(title = "Probabilidades de Transicion de hacia las distintas CategorÃ­as")+
+  labs(title = "Probabilidades de Transicion de hacia las distintas Categorías")+
   geom_tile()+
   geom_text()+
   scale_fill_gradient(low = "grey100", high = "grey30")+
   theme_tufte()
 ```
-#RegresiÃ³n lineal
-A continuaciÃ³n veremos una breve introducciÃ³n a los comandos bÃ¡sicos que se utilizan para realizar econometrÃ­a en R. En primera instancia observaremos la correlaciÃ³n entre dos variables, y luego haremos un test de correlaciÃ³n. Elegimos un caso simple, como observar la relaciÃ³n entre la cantidad de horas de horas trabajadas en la ocupaciÃ³n principal ( __PP3E_TOT__ ) y el ingreso por la ocupaciÃ³n principal ( __P21__). Retomamos el trabajo con la informaciÃ³n completa de las bases, dejando a un lado el panel construido.   
+#Regresión lineal
+A continuación veremos una breve introducción a los comandos básicos que se utilizan para realizar econometría en R. En primera instancia observaremos la correlación entre dos variables, y luego haremos un test de correlación. Elegimos un caso simple, como observar la relación entre la cantidad de horas de horas trabajadas en la ocupación principal ( __PP3E_TOT__ ) y el ingreso por la ocupación principal ( __P21__). Retomamos el trabajo con la información completa de las bases, dejando a un lado el panel construido.   
 
-##VisualizaciÃ³n Previa de la informaciÃ³n
-Grafiquemos rÃ¡pidamente para tener una intuiciÃ³n:
+##Visualización Previa de la información
+Grafiquemos rápidamente para tener una intuición:
 ```{r}
 plot(Bases_Continua$PP3E_TOT,Bases_Continua$P21)
 
 ```
-Como vemos aquÃ­ la funciÃ³n __plot__ nos ayuda para mirar un poco la informaciÃ³n antes de realizar un test o un modelo economÃ©trico. En este caso, nos permite observar que en __PP3E_TOT__ tenemos codificados con _999_ a aquellos que no respondieron la pregunta por la cantidad de horas. 
+Como vemos aquí la función __plot__ nos ayuda para mirar un poco la información antes de realizar un test o un modelo econométrico. En este caso, nos permite observar que en __PP3E_TOT__ tenemos codificados con _999_ a aquellos que no respondieron la pregunta por la cantidad de horas. 
 ```{r}
 Bases_Continua_graf <- Bases_Continua %>% filter(PP3E_TOT != 999)
 
 plot(Bases_Continua_graf$PP3E_TOT,Bases_Continua_graf$P21)
 
 ```
-En una segunda mirada, podemos ver que tenemos algunos individuos que declarar trabajar las 168 horas de la semana, varios que declaran mÃ¡s de 100 horas, y otros tantos con ingreso _0_, o _-9_ (cÃ³digo para los que no responden la pregunta de ingresos).           
-Aplicaremos un filtro mÃ¡s para restringir las horas trabajadas por semana a 84 (12*7) y quedarnos con ingresos positivos.
+En una segunda mirada, podemos ver que tenemos algunos individuos que declarar trabajar las 168 horas de la semana, varios que declaran más de 100 horas, y otros tantos con ingreso _0_, o _-9_ (código para los que no responden la pregunta de ingresos).           
+Aplicaremos un filtro más para restringir las horas trabajadas por semana a 84 (12*7) y quedarnos con ingresos positivos.
 ```{r}
 Bases_Continua_listo <- Bases_Continua %>% filter(P21>0,PP3E_TOT %in% c(1:84))
 
 plot(Bases_Continua_listo$PP3E_TOT,Bases_Continua_listo$P21)
 
 ```
-##CorrelaciÃ³n
-Luego del pantallazo a travÃ©s de los grÃ¡ficos, pasemos a realizar el calculo de la correlaciÃ³n entre las variables a partir de la funciÃ³n _cor_. Los funciÃ³n puede tomar como argumento dos vectores por separado y calcularÃ¡ el coeficiente de correlaciÃ³n entre ambas variables, o bien puede tomar como argumento un dataframe (O algunas variables del mismo) y arrojarÃ¡ como resultado una matriz cuadrada con los coeficiente de correlaciÃ³n entre cada una de ellas.
+##Correlación
+Luego del pantallazo a través de los gráficos, pasemos a realizar el calculo de la correlación entre las variables a partir de la función _cor_. Los función puede tomar como argumento dos vectores por separado y calculará el coeficiente de correlación entre ambas variables, o bien puede tomar como argumento un dataframe (O algunas variables del mismo) y arrojará como resultado una matriz cuadrada con los coeficiente de correlación entre cada una de ellas.
 ```{r}
 cor(Bases_Continua_listo$P21,Bases_Continua_listo$PP3E_TOT)
 cor(Bases_Continua_listo$P21,Bases_Continua_listo$CH06)
@@ -161,29 +161,29 @@ cor(Bases_Continua_listo$P21,Bases_Continua_listo$CH06)
 cor(Bases_Continua_listo[,c("P21","PP3E_TOT","CH06")])
 
 ```
-La funciÃ³n __cor.test__ nos ejecutarÃ¡ el test de correlaciÃ³n sobre dos variables. Necesariamente requiere como argumentos dos vectores por separado.          
-En la salida podremos observar: el valor del estimador t, el p-valor, la hipotesis alternativa del test y el intervalo de confianza de la estimaciÃ³n.
+La función __cor.test__ nos ejecutará el test de correlación sobre dos variables. Necesariamente requiere como argumentos dos vectores por separado.          
+En la salida podremos observar: el valor del estimador t, el p-valor, la hipotesis alternativa del test y el intervalo de confianza de la estimación.
 ```{r}
 
 cor.test(Bases_Continua_listo$P21, Bases_Continua_listo$PP3E_TOT)
 
 ```
-A su vez, la funciÃ³n tiene otros parametros como por ejemplo __conf_level__ que nos permite definir a gusto el nivel de confianza con el que queremos realizar el test. Por otro lado, la funciÃ³n tiene seteado por default el test de Pearson, pero el parÃ¡metro __"method"__ nos permite elejir otros tests.
+A su vez, la función tiene otros parametros como por ejemplo __conf_level__ que nos permite definir a gusto el nivel de confianza con el que queremos realizar el test. Por otro lado, la función tiene seteado por default el test de Pearson, pero el parámetro __"method"__ nos permite elejir otros tests.
 ```{r}
 
 cor.test(Bases_Continua_listo$P21, Bases_Continua_listo$PP3E_TOT,conf.level = 0.90,
          method = "spearman")
 ```
-### RegresiÃ³n lineal simple
-Para realizar una regresiÃ³n simple usaremos la funciÃ³n ```lm```. En este caso probaremos la siguiente regresiÃ³n con las variables que estamos observando: Ingreso de la OcupaciÃ³n principal como la variable dependiente, y las horas trabajadas en la ocupaciÃ³n principal como la independiente
+### Regresión lineal simple
+Para realizar una regresión simple usaremos la función ```lm```. En este caso probaremos la siguiente regresión con las variables que estamos observando: Ingreso de la Ocupación principal como la variable dependiente, y las horas trabajadas en la ocupación principal como la independiente
 $$
 E(P_{21}/horas)= \beta_0 + \beta_1 horas
 $$
-La funciÃ³n ```lm``` tiene entre sus parametros principales:    
-``formula``: En el se especifican las variables que ingresan en el modelo de regresiÃ³n. El signo de _=_ del modelo se representa aquÃ­ mediante el signo ```~```.        
-```data``` : Debe especificarse el dataframe que contiene la informaciÃ³n de las variables a utilizar en el modelo.       
+La función ```lm``` tiene entre sus parametros principales:    
+``formula``: En el se especifican las variables que ingresan en el modelo de regresión. El signo de _=_ del modelo se representa aquí mediante el signo ```~```.        
+```data``` : Debe especificarse el dataframe que contiene la información de las variables a utilizar en el modelo.       
 
-Al ejectuar la funciÃ³n lm() con sus respectivos parametros, podremos visualizar los coeficientes estimados del modelo. Sin embargo, la funciÃ³n __summary__ nos mostrarÃ¡ en mÃ¡s detalle los resultados.
+Al ejectuar la función lm() con sus respectivos parametros, podremos visualizar los coeficientes estimados del modelo. Sin embargo, la función __summary__ nos mostrará en más detalle los resultados.
 ```{r}
 lm(formula = P21 ~ PP3E_TOT, data = Bases_Continua_listo)
 
