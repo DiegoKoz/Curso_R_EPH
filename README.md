@@ -7,11 +7,10 @@ Curso de R para procesamiento de datos de la Encuesta Permanente de Hogares
 Version actual: INDEC + CEPED 2018 (Guido Weksler, Diego Kozlowski y Natsumi Shokida)
 
 Versiones anteriores:
-2017:
-- CEPED (Diego Kozlowski y Guido Weksler)
-- INDEC (Guido Weksler y Natsumi Shokida)
-2018:
-- UNGS (Guido Weksler y Matias Lioni)
+
+- CEPED (Diego Kozlowski y Guido Weksler)-2017
+- INDEC (Guido Weksler y Natsumi Shokida)-2017
+- UNGS (Guido Weksler y Matias Lioni)-2018
 
 
 ## Programa actual
