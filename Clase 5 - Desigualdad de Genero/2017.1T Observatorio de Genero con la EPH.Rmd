@@ -64,8 +64,8 @@ fuentes.dir <- paste0(dirname(script.dir), "/Fuentes/")
 graficos.dir <- paste0(dirname(script.dir), "/Resultados/")
 
 # Se levantan las bases usuarias de la EPH del trimestre correspondiente
-base_individual <- read.table(paste0(fuentes.dir, "usu_individual_t117.txt"), sep=";", dec=",", header = TRUE, fill = TRUE)
-base_hogar <- read.table(paste0(fuentes.dir, "usu_hogar_t117.txt"), sep=";", dec=",", header = TRUE, fill = TRUE)
+base_individual <- read.table("../Fuentes/usu_individual_t117.txt", sep=";", dec=",", header = TRUE, fill = TRUE)
+base_hogar <- read.table("../Fuentes/usu_hogar_t117.txt", sep=";", dec=",", header = TRUE, fill = TRUE)
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}

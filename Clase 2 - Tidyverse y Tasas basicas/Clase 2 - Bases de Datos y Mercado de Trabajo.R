@@ -93,8 +93,7 @@ Datos_gather
 
 list.files("Fuentes/")
 Individual_t117 <-
-  read.table(
-    "Fuentes/usu_individual_t117.txt",
+  read.table("/Fuentes/usu_individual_t117.txt",
     sep = ";",
     dec = ",",
     header = TRUE,

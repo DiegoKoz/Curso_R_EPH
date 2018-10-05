@@ -1,0 +1,20 @@
+{
+    "collab_server" : "",
+    "contents" : "####Ejercicios Clase 1 ####\nlibrary(openxlsx)\n# - Crear un OBJETO llamado _OBJETO_ definido como el resultado de la suma: 5 + 6\nOBJETO <- 5+6\n\n# - Crear un VECTOR _VEC0_ que contenga los numeros 1, 3, 4.\nVEC0 <- c(1,3,4)\n\n# - Crear 3 vectores ( _VEC1_, _VEC2_, _VEC3_) que sean transformaciones del anterior.\nVEC1 <- VEC0*2 \nVEC2 <- VEC0^2 \nVEC3 <- VEC0-2 \n\n# - Crear 3 vectores con la misma cantidad de elementos que VEC0, pero con variables string (texto) ( _VEC4_, _VEC5_, _VEC6_),  \nVEC4 <- c(\"NO\",\"NO\",\"SI\") \nVEC5 <- c(\"PAGO\",\"PAGO\",\"LIBRE\")\nVEC6 <- c(\"SAS\",\"SPSS\",\"R\")\n\n# - Crear un dataframe _DFRAME_ como combinación de todos los vectores creados previamente\nDFRAME <- data.frame(VEC0,VEC1,VEC2,VEC3,VEC4,VEC5,VEC6)\n\n# - Levantar la base Individual del 1er trimestre de 2017, de la EPH\n\n\nindividual_t117 <- read.table(\"Fuentes/usu_individual_t117.txt\",\n                              sep=\";\",\n                              dec=\",\",\n                              header = TRUE,\n                              fill = TRUE)\n\n\nHoja_CBT <- read.xlsx(xlsxFile =\"Fuentes/CANASTAS.xlsx\",\n                       sheet = \"CBT\")",
+    "created" : 1538746768246.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1206275396",
+    "id" : "4D52690F",
+    "lastKnownWriteTime" : 1537096654,
+    "last_content_update" : 1537096654,
+    "path" : "C:/Users/gweks/Desktop/Paquetes/Carpeta del Curso R-CEPED-INDEC/Ejercicios de Clase/Ejercicios - Clase 1.R",
+    "project_path" : "Ejercicios de Clase/Ejercicios - Clase 1.R",
+    "properties" : {
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
