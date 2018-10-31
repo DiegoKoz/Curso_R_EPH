@@ -109,16 +109,41 @@ Grafico
 # Funciones del Usuario
 
 funcion_prueba <- function(parametro1,parametro2) {
-  print(paste(parametro1, parametro2, sep = " <--> "))
+  paste(parametro1, parametro2, sep = " <--> ")
 }
 
 funcion_prueba(parametro1 = "A ver", parametro2 = "Que pasa")
 
 Otra_funcion_prueba <- function(parametro1 ,parametro2 = "Te colgaste en ingresar algo") {
-  print(paste(parametro1, parametro2, sep = " <--> "))
+  paste(parametro1, parametro2, sep = " <--> ")
   
 }
 Otra_funcion_prueba(parametro1 = "Valor 1 ")
+
+
+
+##### map ####
+
+
+resultado <- map2(ABC_123$Letras,ABC_123$Num,funcion_prueba)
+resultado[1:3]
+
+
+ABC_123 %>% 
+  mutate(resultado= map2(Letras,Num,funcion_prueba))
+
+
+ABC_123 %>% 
+  mutate(resultado= unlist(map2(Letras,Num,funcion_prueba)))
+
+
+map(ABC_123$Letras,funcion_prueba,ABC_123$Num)[1:2]
+
+
+ABC_123 %>% 
+  mutate(resultado= map(Letras,funcion_prueba,Num))
+
+
 
 # Lectura y escritura de archivos intermedia
 ## RData
